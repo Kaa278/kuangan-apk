@@ -10,39 +10,17 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _emailFocusNode = FocusNode();
-  final _passwordFocusNode = FocusNode();
   bool _isPasswordVisible = false;
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _emailFocusNode.addListener(() => setState(() {}));
-    _passwordFocusNode.addListener(() => setState(() {}));
-  }
 
   @override
   void dispose() {
-    _emailFocusNode.dispose();
-    _passwordFocusNode.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  void _handleLogin() async {
-    setState(() => _isLoading = true);
-
-    // Simulasi delay login (nanti diganti dengan API)
-    await Future.delayed(const Duration(seconds: 1));
-
-    setState(() => _isLoading = false);
-
-    // Navigasi ke home (nanti diganti setelah login sukses)
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, '/home');
-    }
+  void _handleLogin() {
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override
@@ -53,7 +31,6 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Decorative background elements
           Positioned(
             top: -50,
             right: -50,
@@ -79,7 +56,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Logo and Branding
                     Center(
                       child: Container(
                         padding: const EdgeInsets.all(20),
@@ -130,10 +106,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 48),
 
-                    // Inputs
                     _buildInputField(
                       controller: _emailController,
-                      focusNode: _emailFocusNode,
                       label: 'Email',
                       hint: 'nama@email.com',
                       icon: Icons.alternate_email_rounded,
@@ -142,7 +116,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 20),
                     _buildInputField(
                       controller: _passwordController,
-                      focusNode: _passwordFocusNode,
                       label: 'Password',
                       hint: 'Masukkan kata sandi',
                       icon: Icons.lock_outline_rounded,
@@ -150,9 +123,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    // Action Button
                     ElevatedButton(
-                      onPressed: _isLoading ? null : _handleLogin,
+                      onPressed: _handleLogin,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 18),
                         shape: RoundedRectangleBorder(
@@ -160,27 +132,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         elevation: 0,
                       ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Masuk',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                      child: const Text(
+                        'Masuk',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
 
                     const SizedBox(height: 16),
 
-                    // Forgot Password link
                     Center(
                       child: GestureDetector(
                         onTap: () =>
@@ -201,7 +163,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Sign up link
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -238,14 +199,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildInputField({
     required TextEditingController controller,
-    FocusNode? focusNode,
     required String label,
     required String hint,
     required IconData icon,
     bool isPassword = false,
     TextInputType? keyboardType,
   }) {
-    final showHint = focusNode == null || !focusNode.hasFocus;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -262,12 +221,11 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         TextField(
           controller: controller,
-          focusNode: focusNode,
           obscureText: isPassword && !_isPasswordVisible,
           keyboardType: keyboardType,
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
           decoration: InputDecoration(
-            hintText: showHint ? hint : '',
+            hintText: hint,
             hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
             prefixIcon: Icon(icon, size: 20, color: const Color(0xFF64748B)),
             suffixIcon: isPassword
@@ -279,11 +237,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       size: 20,
                       color: const Color(0xFF64748B),
                     ),
-                    onPressed: () {
-                      setState(() {
-                        _isPasswordVisible = !_isPasswordVisible;
-                      });
-                    },
+                    onPressed: () => setState(
+                      () => _isPasswordVisible = !_isPasswordVisible,
+                    ),
                     splashRadius: 24,
                   )
                 : null,
