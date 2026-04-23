@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -57,28 +58,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [primaryColor, const Color(0xFF6366F1)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(28),
-                          boxShadow: [
-                            BoxShadow(
-                              color: primaryColor.withOpacity(0.2),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.auto_graph_rounded,
-                          size: 40,
-                          color: Colors.white,
-                        ),
+                      child: SvgPicture.asset(
+                        'assets/app_icon.svg',
+                        width: 110,
+                        height: 110,
+                        fit: BoxFit.contain,
                       ),
                     ),
                     const SizedBox(height: 32),
