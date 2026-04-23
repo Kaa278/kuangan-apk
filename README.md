@@ -1,16 +1,53 @@
-# remake_kuangan
+# 📱 Kuangan App
+> Aplikasi manajemen keuangan sederhana berbasis Flutter
 
-A new Flutter project.
+---
 
-## Getting Started
+## ✨ Deskripsi
+**Kuangan** adalah aplikasi mobile yang membantu pengguna mengelola keuangan secara praktis.  
+Dirancang dengan tampilan modern dan ringan, cocok untuk pembelajaran maupun penggunaan sehari-hari.
 
-This project is a starting point for a Flutter application.
+---
 
-A few resources to get you started if this is your first Flutter project:
+## 🚀 Fitur Utama
+- 🔐 Login & Register user  
+- 💰 Manajemen saldo  
+- 📊 Dashboard keuangan  
+- 🔄 Transfer & top-up saldo  
+- 🧾 Penyimpanan data lokal  
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+---
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 🖼️ Tampilan Aplikasi
+
+### 🔑 Login Screen
+<p align="center">
+  <img src="assets/screenshots/login.png" width="250"/>
+</p>
+
+### 📝 Register Screen
+<p align="center">
+  <img src="assets/screenshots/register.png" width="250"/>
+</p>
+
+> 📌 **Catatan:**  
+> Pastikan file screenshot ada di folder:  
+> `assets/screenshots/`
+
+---
+
+## 🛠️ Teknologi yang Digunakan
+- Flutter  
+- Dart  
+- Local Storage (SharedPreferences / custom)  
+- SVG Support  
+
+---
+
+## 📂 Struktur Project
+```bash
+lib/
+ ├── main.dart
+ ├── pages/
+ ├── widgets/
+ └── services/
