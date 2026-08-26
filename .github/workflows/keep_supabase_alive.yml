@@ -1,0 +1,28 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Berjalan setiap 3 hari pada pukul 00:00 UTC
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # Memungkinkan trigger manual dari tab Actions di GitHub
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://ayvxmvhwtyveukdbjteg.supabase.co' }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_8Jz7UwIRZsMY0-tjVRxjnA_aO4IvHOz' }}
+        run: |
+          echo "Sending keep-alive ping to Supabase..."
+          RESPONSE=$(curl -s -w "%{http_code}" -o /dev/null -X GET "${SUPABASE_URL}/rest/v1/categories?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")
+          
+          echo "Response HTTP status code: $RESPONSE"
+          if [ "$RESPONSE" -ge 200 ] && [ "$RESPONSE" -lt 400 ]; then
+            echo "Supabase successfully pinged! Project stays active."
+          else
+            echo "Warning: Response code was $RESPONSE (Project might be paused or restoring)."
+          fi

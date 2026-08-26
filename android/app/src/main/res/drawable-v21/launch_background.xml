@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash_background" />
+
+    <item
+        android:width="220dp"
+        android:height="220dp"
+        android:gravity="top|end"
+        android:top="-72dp"
+        android:right="-52dp">
+        <shape android:shape="oval">
+            <solid android:color="#F6F7FB" />
+        </shape>
+    </item>
+
+    <item
+        android:width="180dp"
+        android:height="180dp"
+        android:gravity="bottom|start"
+        android:bottom="-72dp"
+        android:left="-52dp">
+        <shape android:shape="oval">
+            <solid android:color="#F7F8FC" />
+        </shape>
+    </item>
+
+    <item
+        android:width="112dp"
+        android:height="112dp"
+        android:gravity="center">
+        <bitmap
+            android:antialias="true"
+            android:filter="true"
+            android:gravity="center"
+            android:src="@mipmap/launcher_icon" />
+    </item>
+</layer-list>
