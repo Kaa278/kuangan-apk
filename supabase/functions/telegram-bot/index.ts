@@ -202,37 +202,57 @@ Return ONLY JSON:
   "content": "Warm conversational response for general_chat"
 }`;
 
-  const res = await fetch(`${aiBaseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${aiApiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://kuangan.app",
-    },
-    body: JSON.stringify({
-      model: textModel,
-      max_tokens: 512,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: prompt },
-        { role: "user", content: text }
-      ]
-    })
-  });
+  const candidateTextModels = [
+    textModel,
+    "qwen/qwen3.8-27b",
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "groq/compound-mini",
+  ].filter(Boolean);
 
-  const data = await res.json();
-  if (!res.ok) {
-    console.error("AI API Error (Text):", data);
-    return { _error: data?.error?.message || "AI API Error" };
-  }
-  const content = data?.choices?.[0]?.message?.content ?? "";
-  const parsed = extractJson(content);
+  let lastError = null;
 
-  // If AI failed to return valid JSON but returned text, treat as general_chat
-  if (!parsed && content) {
-    return { intent: "general_chat", content: content };
+  for (const model of candidateTextModels) {
+    try {
+      const res = await fetch(`${aiBaseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${aiApiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://kuangan.app",
+        },
+        body: JSON.stringify({
+          model: model,
+          max_tokens: 512,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: prompt },
+            { role: "user", content: text }
+          ]
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        lastError = data?.error?.message || `HTTP ${res.status}`;
+        console.warn(`Text Model ${model} failed: ${lastError}`);
+        continue;
+      }
+
+      const content = data?.choices?.[0]?.message?.content ?? "";
+      const parsed = extractJson(content);
+      if (!parsed && content) {
+        return { intent: "general_chat", content: content };
+      }
+      if (parsed) return parsed;
+    } catch (err) {
+      lastError = err.message || String(err);
+      console.warn(`Error trying text model ${model}:`, err);
+    }
   }
-  return parsed;
+
+  console.error("All text models failed:", lastError);
+  return { _error: lastError || "AI API Error" };
 }
 
 async function parseImageWithAI(fileId: string, caption: string, categoryList: string = "") {
@@ -252,33 +272,35 @@ async function parseImageWithAI(fileId: string, caption: string, categoryList: s
   const base64Str = arrayBufferToBase64(buffer);
   const dataUrl = `data:image/jpeg;base64,${base64Str}`;
 
-  // 4. Send to AI using the Groq Responses API for image input
-  const res = await fetch(`${aiBaseUrl}/responses`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${aiApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: visionModel,
-      max_output_tokens: 512,
-      text: {
-        format: {
-          type: "json_schema",
-          name: "receipt_parser",
-          schema: receiptSchema
-        }
-      },
-      input: [
-        {
-          role: "user",
-          content: [
+  const candidateVisionModels = [
+    visionModel,
+    "qwen/qwen3.8-27b",
+    "qwen/qwen3.6-27b",
+  ].filter(Boolean);
+
+  let lastError = null;
+
+  for (const model of candidateVisionModels) {
+    try {
+      const res = await fetch(`${aiBaseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${aiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: model,
+          max_tokens: 600,
+          messages: [
             {
-              type: "input_text",
-              text: `Analyze this receipt${caption ? ` with extra note: ${caption}` : ""}.
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: `Analyze this receipt${caption ? ` with extra note: ${caption}` : ""}.
 Available Categories: ${categoryList}
 
-Return ONLY valid JSON format exactly like this:
+Return ONLY valid JSON in this exact format:
 {
   "store": "Name of the store",
   "date": "YYYY-MM-DD",
@@ -292,25 +314,38 @@ CRITICAL RULES FOR TOTAL:
 - Do NOT use cash given ("Bayar", "Cash") or change ("Kembali").
 - If there's a discount or tax, the total is the final amount after those.
 Note for multipliers: 'rb'/'k' = 1,000, 'jt' = 1,000,000.`
-            },
-            {
-              type: "input_image",
-              image_url: dataUrl
+                },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: dataUrl
+                  }
+                }
+              ]
             }
           ]
-        }
-      ]
-    })
-  });
+        })
+      });
 
-  const data = await res.json();
-  if (!res.ok) {
-    console.error("AI API Error (Image):", data);
-    return { _error: data?.error?.message || "AI API Error" };
+      const data = await res.json();
+      if (!res.ok) {
+        lastError = data?.error?.message || `HTTP ${res.status}`;
+        console.warn(`Vision Model ${model} failed: ${lastError}`);
+        continue;
+      }
+
+      const content = data?.choices?.[0]?.message?.content ?? extractResponseText(data);
+      console.log(`AI Vision (${model}) Raw Text:`, content);
+      const parsed = extractJson(content);
+      if (parsed) return parsed;
+    } catch (err) {
+      lastError = err.message || String(err);
+      console.warn(`Error trying vision model ${model}:`, err);
+    }
   }
-  const content = extractResponseText(data);
-  console.log("AI API Image Raw Text:", content);
-  return extractJson(content);
+
+  console.error("All vision models failed:", lastError);
+  return { _error: lastError || "AI API Error" };
 }
 
 function extractJson(text: string): any {
