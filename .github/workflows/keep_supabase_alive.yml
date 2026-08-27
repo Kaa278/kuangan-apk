@@ -12,9 +12,13 @@ jobs:
     steps:
       - name: Ping Supabase REST API
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://ayvxmvhwtyveukdbjteg.supabase.co' }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_8Jz7UwIRZsMY0-tjVRxjnA_aO4IvHOz' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Error: Secrets SUPABASE_URL atau SUPABASE_ANON_KEY belum diatur di repository settings."
+            exit 1
+          fi
           echo "Sending keep-alive ping to Supabase..."
           RESPONSE=$(curl -s -w "%{http_code}" -o /dev/null -X GET "${SUPABASE_URL}/rest/v1/categories?select=id&limit=1" \
             -H "apikey: ${SUPABASE_ANON_KEY}" \
