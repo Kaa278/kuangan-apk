@@ -9,9 +9,9 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const telegramToken = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const aiApiKey = Deno.env.get("GROQ_API_KEY") ?? Deno.env.get("OPENROUTER_API_KEY") ?? "";
-const textModel = Deno.env.get("GROQ_MODEL_TELEGRAM_TEXT") ?? Deno.env.get("OPENROUTER_MODEL") ?? "meta-llama/llama-4-scout-17b-16e-instruct";
-const visionModel = Deno.env.get("GROQ_MODEL_TELEGRAM_VISION") ?? "meta-llama/llama-4-scout-17b-16e-instruct";
-const flutterModel = Deno.env.get("GROQ_MODEL_FLUTTER") ?? "llama-3.1-8b-instant";
+const textModel = Deno.env.get("GROQ_MODEL_TELEGRAM_TEXT") ?? Deno.env.get("OPENROUTER_MODEL") ?? "qwen/qwen3.8-27b";
+const visionModel = Deno.env.get("GROQ_MODEL_TELEGRAM_VISION") ?? "qwen/qwen3.8-27b";
+const flutterModel = Deno.env.get("GROQ_MODEL_FLUTTER") ?? "qwen/qwen3.8-27b";
 const aiBaseUrl = Deno.env.get("AI_BASE_URL") ?? "https://api.groq.com/openai/v1";
 
 console.log(`Kathlyn Edge Function initialized. Text Model: ${textModel}, Vision Model: ${visionModel}, Flutter Model: ${flutterModel}, BaseUrl: ${aiBaseUrl}`);

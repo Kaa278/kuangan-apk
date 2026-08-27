@@ -6,7 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kuangan/features/auth/auth_provider.dart';
 import 'package:kuangan/shared/models/ai_scan_result.dart';
-
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 enum AiScanStatus { idle, picking, analyzingImage, uploading, success, error }
@@ -69,32 +69,71 @@ class AiScanNotifier extends StateNotifier<AiScanState> {
         image: state.image,
       );
 
+      // 1. Try Supabase Edge Function first (Backend Proxy)
+      try {
+        final edgeResponse = await sb.Supabase.instance.client.functions.invoke(
+          'ai-scan',
+          body: {'ocrText': extractedText},
+        );
+
+        if (edgeResponse.status == 200 && edgeResponse.data != null) {
+          final Map<String, dynamic> data = edgeResponse.data is String
+              ? jsonDecode(edgeResponse.data as String)
+              : edgeResponse.data as Map<String, dynamic>;
+
+          if (data['store'] != null || data['total'] != null) {
+            final result = AiScanResult.fromJson(data);
+            state = AiScanState(
+              status: AiScanStatus.success,
+              result: result,
+              image: state.image,
+            );
+            return;
+          }
+        }
+      } catch (edgeError) {
+        debugPrint('Supabase Edge Function ai-scan failed, trying direct fallback: $edgeError');
+      }
+
+      // 2. Fallback to direct call with auto-fallback candidate models
       final apiKey =
           dotenv.env['GROQ_API_KEY'] ?? dotenv.env['OPENROUTER_API_KEY'];
-      final model = dotenv.env['GROQ_MODEL_FLUTTER'] ??
+      final configuredModel = dotenv.env['GROQ_MODEL_FLUTTER'] ??
           dotenv.env['OPENROUTER_MODEL'] ??
-          'llama-3.1-8b-instant';
+          'qwen/qwen3.8-27b';
       final baseUrl =
           dotenv.env['AI_BASE_URL'] ?? 'https://api.groq.com/openai/v1';
 
       if (apiKey == null || apiKey.isEmpty) {
-        throw Exception('API Key tidak ditemukan di .env');
+        throw Exception('API Key tidak ditemukan di konfigurasi.');
       }
 
-      final dio = Dio();
+      final candidateModels = [
+        configuredModel,
+        'qwen/qwen3.8-27b',
+        'openai/gpt-oss-120b',
+        'openai/gpt-oss-20b',
+        'groq/compound-mini',
+      ];
 
-      final payload = {
-        'model': model,
-        'max_tokens': 1000,
-        'messages': [
-          {
-            'role': 'system',
-            'content':
-                'You are a receipt parser. Return only valid JSON. No markdown. No explanation.',
-          },
-          {
-            'role': 'user',
-            'content': '''Analyze this receipt OCR text.
+      final dio = Dio();
+      AiScanResult? parsedResult;
+      String? lastDioError;
+
+      for (final model in candidateModels) {
+        try {
+          final payload = {
+            'model': model,
+            'max_tokens': 1000,
+            'messages': [
+              {
+                'role': 'system',
+                'content':
+                    'You are a receipt parser. Return only valid JSON. No markdown. No explanation.',
+              },
+              {
+                'role': 'user',
+                'content': '''Analyze this receipt OCR text.
 
 Return ONLY valid JSON in this exact structure:
 {
@@ -129,45 +168,55 @@ Rules:
 
 OCR Text:
 $extractedText'''
+              }
+            ],
+          };
+
+          final response = await dio.post(
+            '$baseUrl/chat/completions',
+            options: Options(
+              headers: {
+                'Authorization': 'Bearer $apiKey',
+                'Content-Type': 'application/json',
+              },
+              sendTimeout: const Duration(seconds: 30),
+              receiveTimeout: const Duration(seconds: 60),
+            ),
+            data: payload,
+          );
+
+          final responseText =
+              response.data['choices'][0]['message']['content']?.toString() ?? '';
+
+          String cleanJsonStr = responseText.trim();
+          final int firstBrace = cleanJsonStr.indexOf('{');
+          final int lastBrace = cleanJsonStr.lastIndexOf('}');
+
+          if (firstBrace == -1 || lastBrace == -1 || lastBrace < firstBrace) {
+            throw Exception('AI tidak memberikan format data yang valid.');
           }
-        ],
-      };
 
-      final response = await dio.post(
-        '$baseUrl/chat/completions',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json',
-          },
-          sendTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(seconds: 60),
-        ),
-        data: payload,
-      );
-
-      final responseText =
-          response.data['choices'][0]['message']['content']?.toString() ?? '';
-
-      String cleanJsonStr = responseText.trim();
-
-      final int firstBrace = cleanJsonStr.indexOf('{');
-      final int lastBrace = cleanJsonStr.lastIndexOf('}');
-
-      if (firstBrace == -1 || lastBrace == -1 || lastBrace < firstBrace) {
-        throw Exception(
-          'AI tidak memberikan format data yang valid. Response: $responseText',
-        );
+          cleanJsonStr = cleanJsonStr.substring(firstBrace, lastBrace + 1);
+          final jsonMap = jsonDecode(cleanJsonStr);
+          parsedResult = AiScanResult.fromJson(jsonMap);
+          break; // Succeeded with this model
+        } on DioException catch (e) {
+          lastDioError = e.response?.data?['error']?['message'] ?? e.message;
+          debugPrint('Model $model failed: $lastDioError, trying next...');
+          continue;
+        } catch (e) {
+          lastDioError = e.toString();
+          continue;
+        }
       }
 
-      cleanJsonStr = cleanJsonStr.substring(firstBrace, lastBrace + 1);
-
-      final jsonMap = jsonDecode(cleanJsonStr);
-      final result = AiScanResult.fromJson(jsonMap);
+      if (parsedResult == null) {
+        throw Exception('Semua model AI gagal memproses: $lastDioError');
+      }
 
       state = AiScanState(
         status: AiScanStatus.success,
-        result: result,
+        result: parsedResult,
         image: state.image,
       );
     } on DioException catch (e) {
